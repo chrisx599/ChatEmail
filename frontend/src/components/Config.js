@@ -61,10 +61,46 @@ const Config = ({ isLoading, setIsLoading, error, setError, message, setMessage 
 
               <div className="form-section">
                 <h3>Email Fetching Rules</h3>
-                <label>IMAP Mailbox: <input type="text" name="IMAP_MAILBOX" value={config.IMAP_MAILBOX || ''} onChange={handleChange} /></label>
-                <label>Fetch Criteria: <input type="text" name="FETCH_CRITERIA" value={config.FETCH_CRITERIA || ''} onChange={handleChange} /></label>
+                <label>IMAP Mailbox: 
+                  <select name="IMAP_MAILBOX" value={config.IMAP_MAILBOX || 'INBOX'} onChange={handleChange}>
+                    <option value="INBOX">INBOX (收件箱)</option>
+                    <option value="Sent">Sent (已发送)</option>
+                    <option value="Drafts">Drafts (草稿箱)</option>
+                    <option value="Trash">Trash (垃圾箱)</option>
+                    <option value="Spam">Spam (垃圾邮件)</option>
+                    <option value="Archive">Archive (归档)</option>
+                    <option value="Junk">Junk (垃圾邮件)</option>
+                    <option value="Outbox">Outbox (发件箱)</option>
+                    <option value="Important">Important (重要)</option>
+                    <option value="All Mail">All Mail (所有邮件)</option>
+                  </select>
+                </label>
+                <label>Fetch Criteria: 
+                  <select name="FETCH_CRITERIA" value={config.FETCH_CRITERIA || 'UNSEEN'} onChange={handleChange}>
+                    <option value="ALL">ALL (所有邮件)</option>
+                    <option value="UNSEEN">UNSEEN (未读邮件)</option>
+                    <option value="SEEN">SEEN (已读邮件)</option>
+                    <option value="RECENT">RECENT (最近邮件)</option>
+                    <option value="FLAGGED">FLAGGED (已标记)</option>
+                    <option value="UNFLAGGED">UNFLAGGED (未标记)</option>
+                    <option value="ANSWERED">ANSWERED (已回复)</option>
+                    <option value="UNANSWERED">UNANSWERED (未回复)</option>
+                    <option value="DELETED">DELETED (已删除)</option>
+                    <option value="UNDELETED">UNDELETED (未删除)</option>
+                    <option value="NEW">NEW (新邮件)</option>
+                    <option value="OLD">OLD (旧邮件)</option>
+                  </select>
+                </label>
                 <label>Fetch Limit: <input type="number" name="FETCH_LIMIT" value={config.FETCH_LIMIT || 0} onChange={handleChange} /></label>
                 <label>Fetch Days: <input type="number" name="FETCH_DAYS" value={config.FETCH_DAYS || 0} onChange={handleChange} /></label>
+                
+                {/* 添加获取规则说明 */}
+                <div className="fetch-info">
+                  <p className="info-text">📧 邮箱文件夹: 选择要获取邮件的文件夹</p>
+                  <p className="info-text">🔍 获取条件: 设置邮件筛选条件，UNSEEN表示只获取未读邮件</p>
+                  <p className="info-text">📊 获取限制: 设置单次获取的最大邮件数量，0表示无限制</p>
+                  <p className="info-text">📅 获取天数: 设置获取多少天内的邮件，0表示不限制时间</p>
+                </div>
               </div>
 
               <div className="form-section">
@@ -191,7 +227,25 @@ const Config = ({ isLoading, setIsLoading, error, setError, message, setMessage 
 
               <div className="form-section">
                   <h3>Application Settings</h3>
-                  <label>Log Level: <input type="text" name="LOG_LEVEL" value={config.LOG_LEVEL || ''} onChange={handleChange} /></label>
+                  <label>Log Level: 
+                    <select name="LOG_LEVEL" value={config.LOG_LEVEL || 'INFO'} onChange={handleChange}>
+                      <option value="DEBUG">DEBUG (调试级别)</option>
+                      <option value="INFO">INFO (信息级别)</option>
+                      <option value="WARNING">WARNING (警告级别)</option>
+                      <option value="ERROR">ERROR (错误级别)</option>
+                      <option value="CRITICAL">CRITICAL (严重错误)</option>
+                    </select>
+                  </label>
+                  
+                  {/* 添加日志级别说明 */}
+                  <div className="log-info">
+                    <p className="info-text">📝 日志级别说明:</p>
+                    <p className="info-text">• DEBUG: 显示所有调试信息，用于开发调试</p>
+                    <p className="info-text">• INFO: 显示一般信息，推荐日常使用</p>
+                    <p className="info-text">• WARNING: 只显示警告和错误信息</p>
+                    <p className="info-text">• ERROR: 只显示错误信息</p>
+                    <p className="info-text">• CRITICAL: 只显示严重错误信息</p>
+                  </div>
               </div>
 
               <button onClick={handleSaveConfig} disabled={isLoading} className="action-btn save-btn">
