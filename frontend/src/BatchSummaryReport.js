@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { batchSummarizeWithEmails, comprehensiveAnalyzeEmail } from './api';
+import { EXPORT_FORMATS, exportReport } from './exportUtils';
 import './App.css'; // Reuse existing styles
 
 const BatchSummaryReport = ({ 
@@ -15,6 +16,8 @@ const BatchSummaryReport = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const generateReport = async () => {
     if (emails.length === 0) {
@@ -144,6 +147,25 @@ const BatchSummaryReport = ({
     setCollapsedCategories(newCollapsed);
   };
 
+  const handleExport = async (format) => {
+    if (!analyzedEmails.length && !report) {
+      alert('请先生成报告后再导出');
+      return;
+    }
+
+    setExportLoading(true);
+    try {
+      const filename = await exportReport(format, analyzedEmails, calendarEvents, report);
+      alert(`报告已成功导出为: ${filename}`);
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert(`导出失败: ${err.message}`);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -153,9 +175,21 @@ const BatchSummaryReport = ({
         <div className="report-section">
           <div className="report-header">
             <h2>Report</h2>
-            <button onClick={generateReport} disabled={loading || emails.length === 0} className="action-btn fetch-btn">
-              {loading ? 'Generating Report...' : 'Generate Batch Summary Report'}
-            </button>
+            <div className="report-actions">
+              <button onClick={generateReport} disabled={loading || emails.length === 0} className="action-btn fetch-btn">
+                {loading ? 'Generating Report...' : 'Generate Batch Summary Report'}
+              </button>
+              {(analyzedEmails.length > 0 || report) && (
+                <button 
+                  onClick={() => setShowExportModal(true)} 
+                  disabled={exportLoading}
+                  className="action-btn export-btn"
+                  style={{ marginLeft: '10px' }}
+                >
+                  📤 Export Report
+                </button>
+              )}
+            </div>
           </div>
           
           {error && <p className="error-message">Error: {error}</p>}
@@ -305,6 +339,49 @@ const BatchSummaryReport = ({
             <p>No report generated yet. Click "Generate Batch Summary Report" to start.</p>
           )}
         </div>
+
+        {/* Export Modal */}
+        {showExportModal && (
+          <div className="modal-overlay" onClick={() => setShowExportModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>📤 Export Report</h3>
+                <button 
+                  className="modal-close" 
+                  onClick={() => setShowExportModal(false)}
+                  disabled={exportLoading}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="modal-body">
+                <p>选择导出格式：</p>
+                <div className="export-formats">
+                  {Object.values(EXPORT_FORMATS).map(format => (
+                    <div key={format.id} className="export-format-item">
+                      <button
+                        className="export-format-btn"
+                        onClick={() => handleExport(format.id)}
+                        disabled={exportLoading}
+                      >
+                        <span className="format-icon">{format.icon}</span>
+                        <div className="format-info">
+                          <div className="format-name">{format.name}</div>
+                          <div className="format-description">{format.description}</div>
+                        </div>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {exportLoading && (
+                  <div className="export-loading">
+                    <p>正在导出报告，请稍候...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
