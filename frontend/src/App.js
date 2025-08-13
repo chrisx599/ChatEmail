@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { 
     getConfiguration, saveConfiguration, 
     getEmails, summarizeEmail, categorizeEmail,
     getLists, createList, addEmailToList
 } from './api';
+import ConfigurationPage from './ConfigurationPage';
+import EmailDetail from './EmailDetail';
 import './App.css';
 
+// Import icons from react-icons
+import { FaEnvelope, FaCog } from 'react-icons/fa';
+
+// Main App Component with Router
 function App() {
-  // State management
   const [config, setConfig] = useState(null);
-  const [emails, setEmails] = useState([]);
   const [lists, setLists] = useState([]);
-  const [selectedEmail, setSelectedEmail] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState('');
-  const [analysisResult, setAnalysisResult] = useState('');
-  const [suggestedCategory, setSuggestedCategory] = useState('');
   const [newListName, setNewListName] = useState('');
   const [selectedList, setSelectedList] = useState('');
 
@@ -37,7 +38,7 @@ function App() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Handlers
+  // Handlers for configuration
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const finalValue = type === 'checkbox' ? checked : 
@@ -54,8 +55,103 @@ function App() {
       .finally(() => setIsLoading(false));
   };
 
+  // Handlers for list management
+  const handleCreateList = () => {
+    if (!newListName.trim()) return;
+    setError(null);
+    createList(newListName)
+      .then(() => {
+        setNewListName('');
+        return getLists(); // Refresh lists
+      })
+      .then(setLists)
+      .catch(err => setError(err.message));
+  };
+
+  return (
+    <Router>
+      <div className="App">
+        <Header />
+        <main className="container">
+          <Routes>
+            <Route path="/config" element={
+              <ConfigurationPage
+                config={config}
+                isLoading={isLoading}
+                message={message}
+                error={error}
+                handleChange={handleChange}
+                handleSaveConfig={handleSaveConfig}
+              />
+            } />
+            <Route path="/" element={
+              <EmailPageWrapper 
+                config={config}
+                lists={lists}
+                selectedList={selectedList}
+                setSelectedList={setSelectedList}
+                newListName={newListName}
+                setNewListName={setNewListName}
+                handleCreateList={handleCreateList}
+                globalIsLoading={isLoading}
+                globalError={error}
+                globalMessage={message}
+              />
+            } />
+          </Routes>
+        </main>
+      </div>
+    </Router>
+  );
+}
+
+// Header Component with Navigation
+const Header = () => {
+  return (
+    <header className="App-header">
+      <h1>ChatEmail AI Assistant</h1>
+      <nav>
+        <ul className="nav-links">
+          <li>
+            <Link to="/" className="nav-link">
+              <FaEnvelope className="nav-icon" />
+              <span>Emails</span>
+            </Link>
+          </li>
+          <li>
+            <Link to="/config" className="nav-link">
+              <FaCog className="nav-icon" />
+              <span>Configuration</span>
+            </Link>
+          </li>
+        </ul>
+      </nav>
+    </header>
+  );
+};
+
+// Wrapper for EmailPage to manage its internal state
+const EmailPageWrapper = ({ config, lists, selectedList, setSelectedList, newListName, setNewListName, handleCreateList, globalIsLoading, globalError, globalMessage }) => {
+  const [emails, setEmails] = useState([]);
+  const [selectedEmail, setSelectedEmail] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState('');
+  const [suggestedCategory, setSuggestedCategory] = useState('');
+  // Local state for EmailPageWrapper
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [message, setMessage] = useState('');
+  
+  const navigate = useNavigate();
+
   const handleFetchEmails = () => {
-    setIsLoading(true); setError(null); setEmails([]);
+    if (!config || !config.EMAIL_ADDRESS || !config.EMAIL_PASSWORD) {
+        alert("Please configure email account settings first.");
+        navigate("/config");
+        return;
+    }
+    
+    setIsLoading(true); setError(null); setMessage(''); setEmails([]);
     getEmails()
       .then(data => setEmails(data))
       .catch(err => setError(err.message))
@@ -89,18 +185,6 @@ function App() {
       .finally(() => setIsAnalyzing(false));
   };
 
-  const handleCreateList = () => {
-    if (!newListName.trim()) return;
-    setError(null);
-    createList(newListName)
-      .then(() => {
-        setNewListName('');
-        return getLists(); // Refresh lists
-      })
-      .then(setLists)
-      .catch(err => setError(err.message));
-  };
-
   const handleAddEmailToList = () => {
     if (!selectedEmail || !selectedList) return;
     setError(null);
@@ -109,127 +193,174 @@ function App() {
       .catch(err => setError(err.message));
   };
 
-  // --- RENDER LOGIC ---
   if (selectedEmail) {
-    // --- EMAIL DETAIL VIEW ---
     return (
-      <div className="App">
-        <header className="App-header"><h1>Email Details</h1></header>
-        <main className="container">
-          <div className="email-detail-view">
-            <button onClick={handleBackToList} className="action-btn back-btn">Back to List</button>
-            <div className="email-detail-header">
-              <h2>{selectedEmail.subject}</h2>
-              <p><strong>From:</strong> {selectedEmail.from}</p>
-            </div>
-            
-            <div className="ai-actions">
-              <h3>AI Analysis & Actions</h3>
-              <div className="action-group">
-                <button onClick={handleSummarize} disabled={isAnalyzing} className="action-btn summarize-btn">
-                  {isAnalyzing ? 'Analyzing...' : 'Summarize'}
-                </button>
-                <button onClick={handleCategorize} disabled={isAnalyzing} className="action-btn categorize-btn">
-                  {isAnalyzing ? 'Analyzing...' : 'Suggest Category'}
-                </button>
-              </div>
-              {analysisResult && (
-                <div className="ai-result">
-                  <h4>Summary:</h4>
-                  <p>{analysisResult}</p>
-                </div>
-              )}
-              {suggestedCategory && (
-                <div className="ai-result">
-                  <h4>Suggested Category:</h4>
-                  <p><strong>{suggestedCategory}</strong></p>
-                </div>
-              )}
-              <div className="action-group list-action">
-                <select value={selectedList} onChange={e => setSelectedList(e.target.value)}>
-                  {lists.map(list => <option key={list} value={list}>{list}</option>)}
-                </select>
-                <button onClick={handleAddEmailToList} className="action-btn add-to-list-btn">Add to List</button>
-              </div>
-            </div>
-            {error && <p className="error-message">Error: {error}</p>}
-            <div className="email-body" dangerouslySetInnerHTML={{ __html: selectedEmail.body }} />
-          </div>
-        </main>
-      </div>
+      <EmailDetail
+        selectedEmail={selectedEmail}
+        lists={lists}
+        selectedList={selectedList}
+        analysisResult={analysisResult}
+        suggestedCategory={suggestedCategory}
+        isAnalyzing={isAnalyzing}
+        error={error}
+        handleBackToList={handleBackToList}
+        handleSummarize={handleSummarize}
+        handleCategorize={handleCategorize}
+        handleAddEmailToList={handleAddEmailToList}
+        setSelectedList={setSelectedList}
+      />
     );
   }
 
-  // --- MAIN VIEW ---
   return (
-    <div className="App">
-      <header className="App-header"><h1>ChatEmail AI Assistant</h1></header>
-      <main className="container">
-        <div className="sidebar">
-          <div className="config-form">
-            <h2>Configuration</h2>
-            {config ? (
-              <>
-                <div className="form-section">
-                    <h3>Email Account Settings</h3>
-                    <label>IMAP Server: <input type="text" name="IMAP_SERVER" value={config.IMAP_SERVER || ''} onChange={handleChange} /></label>
-                    <label>IMAP Port: <input type="number" name="IMAP_PORT" value={config.IMAP_PORT || 0} onChange={handleChange} /></label>
-                    <label>Email Address: <input type="email" name="EMAIL_ADDRESS" value={config.EMAIL_ADDRESS || ''} onChange={handleChange} /></label>
-                    <label>Email Password: <input type="password" name="EMAIL_PASSWORD" value={config.EMAIL_PASSWORD || ''} onChange={handleChange} /></label>
-                </div>
-                <div className="form-section">
-                    <h3>AI Provider Settings</h3>
-                    <label>AI Provider: 
-                    <select name="AI_PROVIDER" value={config.AI_PROVIDER || 'openai'} onChange={handleChange}>
-                        <option value="openai">OpenAI</option>
-                        <option value="anthropic">Anthropic</option>
-                    </select>
-                    </label>
-                    <label>OpenAI API Key: <input type="password" name="OPENAI_API_KEY" value={config.OPENAI_API_KEY || ''} onChange={handleChange} /></label>
-                </div>
-                <button onClick={handleSaveConfig} disabled={isLoading} className="action-btn save-btn">
-                    {isLoading ? 'Saving...' : 'Save Configuration'}
-                </button>
-              </>
-            ) : <p>Loading configuration...</p>}
-          </div>
-          <div className="list-management">
-            <h2>Custom Lists</h2>
-            <ul className="custom-lists">
-              {lists.map(list => <li key={list}>{list}</li>)}
-            </ul>
-            <div className="create-list-form">
-              <input 
-                type="text" 
-                value={newListName} 
-                onChange={e => setNewListName(e.target.value)} 
-                placeholder="New list name"
-              />
-              <button onClick={handleCreateList}>Create List</button>
-            </div>
-          </div>
-        </div>
-
-        <div className="email-section">
-            <h2>Inbox</h2>
-            <button onClick={handleFetchEmails} disabled={isLoading} className="action-btn fetch-btn">
-                {isLoading && emails.length === 0 ? 'Fetching...' : 'Fetch Emails'}
-            </button>
-            {message && <p className="success-message">{message}</p>}
-            {error && <p className="error-message">Error: {error}</p>}
-            <ul className="email-list">
-                {emails.map(email => (
-                    <li key={email.id} className="email-item" onClick={() => handleSelectEmail(email)}>
-                        <div className="email-subject">{email.subject}</div>
-                        <div className="email-from">From: {email.from}</div>
-                    </li>
-                ))}
-            </ul>
-            {emails.length === 0 && !isLoading && <p>No emails to display.</p>}
-        </div>
-      </main>
-    </div>
+    <EmailPage 
+      emails={emails}
+      handleFetchEmails={handleFetchEmails}
+      handleSelectEmail={handleSelectEmail}
+      isLoading={isLoading}
+      error={error}
+      message={message}
+      lists={lists}
+      newListName={newListName}
+      setNewListName={setNewListName}
+      handleCreateList={handleCreateList}
+      selectedList={selectedList}
+      setSelectedList={setSelectedList}
+    />
   );
-}
+};
+
+// EmailPage Component (List and Sidebar)
+const EmailPage = ({ 
+  emails, handleFetchEmails, handleSelectEmail, isLoading, error, message,
+  lists, newListName, setNewListName, handleCreateList, selectedList, setSelectedList
+}) => {
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [emailsPerPage, setEmailsPerPage] = useState(10); // Default 10 emails per page
+
+  // Calculate pagination
+  const indexOfLastEmail = currentPage * emailsPerPage;
+  const indexOfFirstEmail = indexOfLastEmail - emailsPerPage;
+  const currentEmails = emails.slice(indexOfFirstEmail, indexOfLastEmail);
+  const totalPages = Math.ceil(emails.length / emailsPerPage);
+
+  // Change page
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  
+  // Change emails per page
+  const handleEmailsPerPageChange = (e) => {
+    const newEmailsPerPage = parseInt(e.target.value, 10);
+    setEmailsPerPage(newEmailsPerPage);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
+  return (
+    <>
+      <div className="sidebar">
+        <div className="list-management">
+          <h2>Custom Lists</h2>
+          <ul className="custom-lists">
+            {lists.map(list => <li key={list}>{list}</li>)}
+          </ul>
+          <div className="create-list-form">
+            <input 
+              type="text" 
+              value={newListName} 
+              onChange={e => setNewListName(e.target.value)} 
+              placeholder="New list name"
+            />
+            <button onClick={handleCreateList}>Create List</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="email-section">
+          <h2>Inbox</h2>
+          <button onClick={handleFetchEmails} disabled={isLoading} className="action-btn fetch-btn">
+              {isLoading && emails.length === 0 ? 'Fetching...' : 'Fetch Emails'}
+          </button>
+          {message && <p className="success-message">{message}</p>}
+          {error && <p className="error-message">Error: {error}</p>}
+          
+          {/* Pagination Controls */}
+          {emails.length > 0 && (
+            <div className="pagination-controls">
+              <label>
+                Emails per page:
+                <select value={emailsPerPage} onChange={handleEmailsPerPageChange}>
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </label>
+              
+              <div className="pagination">
+                <button 
+                  onClick={() => paginate(currentPage - 1)} 
+                  disabled={currentPage === 1}
+                  className="pagination-btn"
+                >
+                  Previous
+                </button>
+                
+                <span className="pagination-info">
+                  Page {currentPage} of {totalPages}
+                </span>
+                
+                <button 
+                  onClick={() => paginate(currentPage + 1)} 
+                  disabled={currentPage === totalPages}
+                  className="pagination-btn"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+          
+          <ul className="email-list">
+              {currentEmails.map(email => (
+                  <li key={email.id} className="email-item" onClick={() => handleSelectEmail(email)}>
+                      <div className="email-subject">{email.subject}</div>
+                      <div className="email-from">From: {email.from}</div>
+                  </li>
+              ))}
+          </ul>
+          
+          {emails.length === 0 && !isLoading && <p>No emails to display.</p>}
+          
+          {/* Pagination Controls (below list as well) */}
+          {emails.length > 0 && (
+            <div className="pagination-controls bottom">
+              <div className="pagination">
+                <button 
+                  onClick={() => paginate(currentPage - 1)} 
+                  disabled={currentPage === 1}
+                  className="pagination-btn"
+                >
+                  Previous
+                </button>
+                
+                <span className="pagination-info">
+                  Page {currentPage} of {totalPages}
+                </span>
+                
+                <button 
+                  onClick={() => paginate(currentPage + 1)} 
+                  disabled={currentPage === totalPages}
+                  className="pagination-btn"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+      </div>
+    </>
+  );
+};
 
 export default App;
