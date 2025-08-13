@@ -1,24 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { getConfiguration, saveConfiguration, getEmails, summarizeEmail } from './api';
 import './App.css';
 
-function App() {
+// Import the new component
+import BatchSummaryReport from './BatchSummaryReport';
+
+// Separate component for navigation
+const Navigation = () => {
+  const location = useLocation();
+  
+  return (
+    <nav className="app-navigation">
+      <Link 
+        to="/" 
+        className={location.pathname === '/' ? 'nav-link active' : 'nav-link'}
+      >
+        Configuration & Inbox
+      </Link>
+      <Link 
+        to="/report" 
+        className={location.pathname === '/report' ? 'nav-link active' : 'nav-link'}
+      >
+        Batch Summary Report
+      </Link>
+    </nav>
+  );
+};
+
+// Component for the main configuration and inbox view
+const ConfigAndInboxView = ({ emails, setEmails, isLoading, setIsLoading, error, setError, message, setMessage }) => {
   const [config, setConfig] = useState(null);
-  const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState(null);
-  const [message, setMessage] = useState('');
   const [analysisResult, setAnalysisResult] = useState('');
 
-  useEffect(() => {
-    setIsLoading(true);
-    getConfiguration()
-      .then(data => setConfig(data))
-      .catch(err => setError(err.message))
-      .finally(() => setIsLoading(false));
-  }, []);
+  // Fetch configuration when the config section is loaded
+  React.useEffect(() => {
+    if (!config) {
+      setIsLoading(true);
+      getConfiguration()
+        .then(data => setConfig(data))
+        .catch(err => setError(err.message))
+        .finally(() => setIsLoading(false));
+    }
+  }, [config, setIsLoading, setError]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -45,9 +71,12 @@ function App() {
   const handleFetchEmails = () => {
     setIsLoading(true);
     setError(null);
-    setEmails([]);
+    setAnalysisResult('');
     getEmails()
-      .then(data => setEmails(data))
+      .then(data => {
+        setEmails(data);
+        setMessage('Emails fetched successfully.');
+      })
       .catch(err => setError(err.message))
       .finally(() => setIsLoading(false));
   };
@@ -113,6 +142,7 @@ function App() {
       <header className="App-header">
         <h1>ChatEmail AI Assistant</h1>
       </header>
+      <Navigation /> {/* Add navigation here */}
       <main className="container">
         <div className="config-form">
           <h2>Configuration</h2>
@@ -147,16 +177,20 @@ function App() {
                   <select name="AI_PROVIDER" value={config.AI_PROVIDER || 'openai'} onChange={handleChange}>
                     <option value="openai">OpenAI</option>
                     <option value="anthropic">Anthropic</option>
+                    <option value="openrouter">OpenRouter</option>
                   </select>
                 </label>
                 <label>OpenAI API Key: <input type="password" name="OPENAI_API_KEY" value={config.OPENAI_API_KEY || ''} onChange={handleChange} /></label>
                 <label>Anthropic API Key: <input type="password" name="ANTHROPIC_API_KEY" value={config.ANTHROPIC_API_KEY || ''} onChange={handleChange} /></label>
+                <label>OpenRouter API Key: <input type="password" name="OPENROUTER_API_KEY" value={config.OPENROUTER_API_KEY || ''} onChange={handleChange} /></label>
                 <label>OpenAI Base URL: <input type="text" name="OPENAI_BASE_URL" value={config.OPENAI_BASE_URL || ''} onChange={handleChange} /></label>
+                <label>OpenRouter Base URL: <input type="text" name="OPENROUTER_BASE_URL" value={config.OPENROUTER_BASE_URL || ''} onChange={handleChange} /></label>
               </div>
 
               <div className="form-section">
                 <h3>AI Behavior Settings</h3>
                 <label>OpenAI Model: <input type="text" name="OPENAI_MODEL" value={config.OPENAI_MODEL || ''} onChange={handleChange} /></label>
+                <label>OpenRouter Model: <input type="text" name="OPENROUTER_MODEL" value={config.OPENROUTER_MODEL || ''} onChange={handleChange} /></label>
                 <label>AI Output Language: <input type="text" name="AI_OUTPUT_LANGUAGE" value={config.AI_OUTPUT_LANGUAGE || ''} onChange={handleChange} /></label>
                 <label>AI Temperature: <input type="number" step="0.1" name="AI_TEMPERATURE" value={config.AI_TEMPERATURE || 0} onChange={handleChange} /></label>
                 <label>AI Max Tokens: <input type="number" name="AI_MAX_TOKENS" value={config.AI_MAX_TOKENS || 0} onChange={handleChange} /></label>
@@ -177,7 +211,7 @@ function App() {
         <div className="email-section">
             <h2>Inbox</h2>
             <button onClick={handleFetchEmails} disabled={isLoading} className="action-btn fetch-btn">
-                {isLoading && emails.length === 0 ? 'Fetching...' : 'Fetch Emails'}
+                {isLoading ? 'Fetching...' : 'Fetch Emails'}
             </button>
 
             {error && <p className="error-message">Error: {error}</p>}
@@ -195,6 +229,50 @@ function App() {
         </div>
       </main>
     </div>
+  );
+};
+
+// Main App component wrapped in Router
+function App() {
+  const [emails, setEmails] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [message, setMessage] = useState('');
+
+  return (
+    <Router>
+      <div className="App">
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              <ConfigAndInboxView 
+                emails={emails}
+                setEmails={setEmails}
+                isLoading={isLoading}
+                setIsLoading={setIsLoading}
+                error={error}
+                setError={setError}
+                message={message}
+                setMessage={setMessage}
+              />
+            } 
+          />
+          <Route 
+            path="/report" 
+            element={
+              <BatchSummaryReport 
+                emails={emails}
+                isLoading={isLoading}
+                error={error}
+                message={message}
+                setMessage={setMessage}
+              />
+            } 
+          />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

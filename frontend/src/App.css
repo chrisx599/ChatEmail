@@ -19,6 +19,34 @@ body {
   margin-bottom: 20px;
 }
 
+/* Navigation Styles */
+.app-navigation {
+  display: flex;
+  justify-content: center;
+  background-color: #e9ecef;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.nav-link {
+  padding: 10px 20px;
+  margin: 0 10px;
+  text-decoration: none;
+  color: #495057;
+  border-radius: 4px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.nav-link:hover {
+  background-color: #dee2e6;
+}
+
+.nav-link.active {
+  background-color: #007bff;
+  color: white;
+}
+
 .container {
   display: flex;
   max-width: 1200px;
@@ -249,4 +277,84 @@ select {
 .ai-result p {
     margin: 0;
     white-space: pre-wrap; /* To respect newlines in the summary */
+}
+
+/* Batch Summary Report Styles */
+.report-section {
+  width: 100%;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  text-align: left;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.report-content {
+  margin-top: 20px;
+}
+
+.category-section {
+  margin-bottom: 30px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.category-title {
+  background-color: #f8f9fa;
+  margin: 0;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e9ecef;
+  color: #495057;
+  font-size: 1.4em;
+}
+
+.category-email-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.category-email-item {
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.category-email-item:last-child {
+  border-bottom: none;
+}
+
+.category-email-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+  color: #6c757d;
+}
+
+.category-email-id {
+  font-weight: bold;
+}
+
+.category-email-from {
+  font-style: italic;
+}
+
+.category-email-subject {
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+  color: #212529;
+}
+
+.category-email-summary {
+  margin: 0;
+  line-height: 1.5;
+  color: #495057;
 }
