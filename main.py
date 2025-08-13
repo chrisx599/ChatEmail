@@ -1,39 +1,64 @@
 """
 Main application file for the Email AI Assistant.
 """
-from email_client import EmailClient
-from ai_service import summarize_email_with_openai
+import logging
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
+from email_client import EmailClient
+from ai_service import summarize_email
+from config import (
+    LOG_LEVEL,
+    MARK_AS_READ,
+    MOVE_TO_FOLDER_ON_SUCCESS,
+    FETCH_LIMIT,
+    FETCH_DAYS,
+    IMAP_MAILBOX
+)
+
+# Configure logging
+logging.basicConfig(level=getattr(logging, LOG_LEVEL.upper()),
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+console = Console()
+
 def main():
     """Main function to run the email assistant."""
-    console = Console()
     console.print("[bold cyan]Email AI Assistant started...[/bold cyan]")
+    logging.info("Application started.")
 
     client = EmailClient()
     if not client.connect():
         console.print("[bold red]Failed to connect to email server. Exiting.[/bold red]")
+        logging.error("Failed to connect to email server. Exiting.")
         return
 
     try:
-        # Fetch up to 5 unread emails
-        unread_emails = client.fetch_unread_emails(limit=5)
+        console.print(f"[bold]Fetching emails from mailbox:[/bold] [yellow]{IMAP_MAILBOX}[/yellow]")
+        if FETCH_DAYS > 0:
+            console.print(f"[bold]Fetching emails from last:[/bold] [yellow]{FETCH_DAYS} days[/yellow]")
+        if FETCH_LIMIT > 0:
+            console.print(f"[bold]Fetching up to:[/bold] [yellow]{FETCH_LIMIT} emails[/yellow]")
 
-        if not unread_emails:
-            console.print("[bold green]No unread emails found. All caught up![/bold green]")
+        emails_to_process = client.fetch_emails()
+
+        if not emails_to_process:
+            console.print("[bold green]No emails found matching criteria. All caught up![/bold green]")
+            logging.info("No emails found matching criteria.")
         else:
-            console.print(f"[bold yellow]Found {len(unread_emails)} unread emails. Processing...[/bold yellow]\n")
+            console.print(f"[bold yellow]Found {len(emails_to_process)} emails to process. Processing...[/bold yellow]\n")
+            logging.info(f"Found {len(emails_to_process)} emails to process.")
 
-            for email in unread_emails:
-                console.print(f"[bold]From:[/bold] {email['from']}")
-                console.print(f"[bold]Subject:[/bold] {email['subject']}")
+            for email_data in emails_to_process:
+                console.print("--- " * 10)
+                console.print(f"[bold]Processing Email ID:[/bold] {email_data['id']}")
+                console.print(f"[bold]From:[/bold] {email_data['from']}")
+                console.print(f"[bold]Subject:[/bold] {email_data['subject']}")
 
                 with console.status("[italic blue]Summarizing with AI...[/italic blue]", spinner="dots"):
-                    summary = summarize_email_with_openai(email['subject'], email['body'])
+                    summary = summarize_email(email_data['subject'], email_data['body'])
                 
-                # Create a panel for the summary
                 summary_panel = Panel(
                     Text(summary, style="white"),
                     title="[bold green]AI Summary[/bold green]",
@@ -41,11 +66,17 @@ def main():
                     expand=False
                 )
                 console.print(summary_panel)
-                console.print("---" * 10)
+
+                if MARK_AS_READ:
+                    client.mark_email_as_read(email_data['id'])
+                
+                if MOVE_TO_FOLDER_ON_SUCCESS:
+                    client.move_email_to_folder(email_data['id'], MOVE_TO_FOLDER_ON_SUCCESS)
 
     finally:
         client.close()
         console.print("[bold cyan]Process finished and disconnected.[/bold cyan]")
+        logging.info("Application finished and disconnected.")
 
 if __name__ == "__main__":
     main()
