@@ -30,3 +30,18 @@ export const getEmails = async () => {
   }
   return response.json();
 };
+
+export const summarizeEmail = async (subject, body) => {
+    const response = await fetch(`${API_BASE_URL}/api/analyze/summarize`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ subject, body }),
+    });
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to get summary');
+    }
+    return response.json();
+};

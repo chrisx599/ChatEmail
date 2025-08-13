@@ -143,8 +143,8 @@ class EmailClient:
             except (LookupError, UnicodeDecodeError):
                 body_plain = payload.decode('latin-1', errors='ignore')
 
-        # Prioritize plain text, but fall back to HTML
-        body = body_plain.strip() if body_plain else body_html.strip()
+        # Prioritize HTML, but fall back to plain text for a GUI client
+        body = body_html.strip() if body_html else body_plain.strip()
         
         return {
             'id': email_id,

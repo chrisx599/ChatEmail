@@ -5,8 +5,9 @@ from typing import Optional, List
 import os
 from dotenv import load_dotenv, set_key
 
-# Import your existing email client
+# Import your existing modules
 from email_client import EmailClient
+from ai_service import summarize_email
 import config as app_config # Import your config loader
 
 # --- Pydantic Models ---
@@ -38,6 +39,13 @@ class Email(BaseModel):
     subject: str
     body: str
 
+class AnalyzeRequest(BaseModel):
+    subject: str
+    body: str
+
+class AnalyzeResponse(BaseModel):
+    summary: str
+
 # --- FastAPI App Initialization ---
 app = FastAPI()
 
@@ -57,9 +65,13 @@ DOTENV_PATH = os.path.join(os.path.dirname(__file__), '.env')
 def reload_config():
     """Reloads the configuration from the .env file."""
     load_dotenv(dotenv_path=DOTENV_PATH, override=True)
-    # This is a bit of a hack to reload the config module
     import importlib
     importlib.reload(app_config)
+    # Also reload the ai_service to re-initialize clients with new keys
+    from ai_service import __name__ as ai_service_name
+    import sys
+    if ai_service_name in sys.modules:
+        importlib.reload(sys.modules[ai_service_name])
 
 # --- API Endpoints ---
 @app.get("/")
@@ -101,3 +113,15 @@ def get_emails():
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching emails: {e}")
     finally:
         client.close()
+
+@app.post("/api/analyze/summarize", response_model=AnalyzeResponse)
+def analyze_email_summary(request: AnalyzeRequest):
+    """Receives email content and returns an AI-generated summary."""
+    reload_config() # Ensure AI service uses latest config
+    try:
+        summary = summarize_email(subject=request.subject, body=request.body)
+        if summary.startswith("[ERROR]"):
+            raise HTTPException(status_code=500, detail=summary)
+        return AnalyzeResponse(summary=summary)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during analysis: {e}")

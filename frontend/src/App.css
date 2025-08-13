@@ -119,6 +119,15 @@ select {
     background-color: #5a6268;
 }
 
+.summarize-btn {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.summarize-btn:hover:not(:disabled) {
+    background-color: #e0a800;
+}
+
 .error-message {
   color: #dc3545;
   background-color: #f8d7da;
@@ -197,6 +206,9 @@ select {
 
 .email-body {
     line-height: 1.6;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
 }
 
 .email-body pre {
@@ -206,4 +218,35 @@ select {
     white-space: -o-pre-wrap;    /* Opera 7 */
     word-wrap: break-word;       /* Internet Explorer 5.5+ */
     font-family: inherit;
+}
+
+/* AI Section */
+.ai-actions {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.ai-actions h3 {
+    margin-top: 0;
+}
+
+.ai-result {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #e9f7fd;
+    border: 1px solid #d0eefc;
+    border-radius: 4px;
+}
+
+.ai-result h4 {
+    margin: 0 0 10px 0;
+    color: #0c5460;
+}
+
+.ai-result p {
+    margin: 0;
+    white-space: pre-wrap; /* To respect newlines in the summary */
 }
