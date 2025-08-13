@@ -316,6 +316,14 @@ select {
   font-size: 1.4em;
 }
 
+.category-title.collapsible {
+  transition: background-color 0.2s ease;
+}
+
+.category-title.collapsible:hover {
+  background-color: #e9ecef;
+}
+
 .category-email-list {
   list-style: none;
   padding: 0;

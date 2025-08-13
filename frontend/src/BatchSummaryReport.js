@@ -6,6 +6,7 @@ const BatchSummaryReport = ({ emails }) => {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [collapsedCategories, setCollapsedCategories] = useState(new Set());
 
   const generateReport = async () => {
     if (emails.length === 0) {
@@ -28,15 +29,21 @@ const BatchSummaryReport = ({ emails }) => {
     }
   };
 
+  const toggleCategory = (categoryIndex) => {
+    const newCollapsed = new Set(collapsedCategories);
+    if (newCollapsed.has(categoryIndex)) {
+      newCollapsed.delete(categoryIndex);
+    } else {
+      newCollapsed.add(categoryIndex);
+    }
+    setCollapsedCategories(newCollapsed);
+  };
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>Batch Summary Report</h1>
       </header>
-      <nav className="app-navigation">
-        <a href="/" className="nav-link">Configuration & Inbox</a>
-        <a href="/report" className="nav-link active">Batch Summary Report</a>
-      </nav>
       <main className="container">
         <div className="report-section">
           <div className="report-header">
@@ -60,22 +67,30 @@ const BatchSummaryReport = ({ emails }) => {
             <div className="report-content">
               {report.categories.map((category, index) => (
                 <div key={index} className="category-section">
-                  <h2 className="category-title">{category.name}</h2>
-                  {category.emails && category.emails.length > 0 ? (
-                    <ul className="category-email-list">
-                      {category.emails.map((email, emailIndex) => (
-                        <li key={emailIndex} className="category-email-item">
-                          <div className="category-email-header">
-                            <span className="category-email-id">ID: {email.id}</span>
-                            <span className="category-email-from">From: {email.from}</span>
-                          </div>
-                          <h3 className="category-email-subject">{email.subject}</h3>
-                          <p className="category-email-summary">{email.summary}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>No emails in this category.</p>
+                  <h2 
+                    className="category-title collapsible" 
+                    onClick={() => toggleCategory(index)}
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                  >
+                    {collapsedCategories.has(index) ? '▶' : '▼'} {category.name}
+                  </h2>
+                  {!collapsedCategories.has(index) && (
+                    category.emails && category.emails.length > 0 ? (
+                      <ul className="category-email-list">
+                        {category.emails.map((email, emailIndex) => (
+                          <li key={emailIndex} className="category-email-item">
+                            <div className="category-email-header">
+                              <span className="category-email-id">ID: {email.id}</span>
+                              <span className="category-email-from">From: {email.from}</span>
+                            </div>
+                            <h3 className="category-email-subject">{email.subject}</h3>
+                            <p className="category-email-summary">{email.summary}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No emails in this category.</p>
+                    )
                   )}
                 </div>
               ))}

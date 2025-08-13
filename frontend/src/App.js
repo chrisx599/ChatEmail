@@ -142,7 +142,6 @@ const ConfigAndInboxView = ({ emails, setEmails, isLoading, setIsLoading, error,
       <header className="App-header">
         <h1>ChatEmail AI Assistant</h1>
       </header>
-      <Navigation /> {/* Add navigation here */}
       <main className="container">
         <div className="config-form">
           <h2>Configuration</h2>
@@ -242,6 +241,7 @@ function App() {
   return (
     <Router>
       <div className="App">
+        <Navigation />
         <Routes>
           <Route 
             path="/" 
