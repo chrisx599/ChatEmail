@@ -1,6 +1,6 @@
 # TODO:
 
-- [x] backend_batch_analysis: 修改后端API，确保批量报告生成时能调用AI进行邮件优先级分析和日程提取 (priority: High)
-- [x] optimize_ai_prompts: 优化AI的prompt，使其能更好地识别邮件重要性和提取日程信息 (priority: High)
-- [x] ensure_data_flow: 确保前后端数据流完整，批量报告能正确显示优先级排序和日程信息 (priority: Medium)
-- [x] test_end_to_end: 测试完整的端到端功能 (priority: Low)
+- [x] analyze_current_state: 分析当前批量报告中优先级和日程数据的状态管理方式 (priority: High)
+- [x] lift_analysis_state: 将邮件的优先级分析和日程信息状态提升到App组件中 (priority: High)
+- [x] update_batch_report: 修改BatchSummaryReport组件使用全局状态 (priority: High)
+- [x] test_state_persistence: 测试页面切换后数据是否保持 (priority: Medium)

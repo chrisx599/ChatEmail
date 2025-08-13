@@ -2,11 +2,19 @@ import React, { useState } from 'react';
 import { batchSummarizeWithEmails, comprehensiveAnalyzeEmail } from './api';
 import './App.css'; // Reuse existing styles
 
-const BatchSummaryReport = ({ emails, report, setReport, collapsedCategories, setCollapsedCategories }) => {
+const BatchSummaryReport = ({ 
+  emails, 
+  report, 
+  setReport, 
+  collapsedCategories, 
+  setCollapsedCategories,
+  analyzedEmails,
+  setAnalyzedEmails,
+  calendarEvents,
+  setCalendarEvents
+}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [analyzedEmails, setAnalyzedEmails] = useState([]);
-  const [calendarEvents, setCalendarEvents] = useState([]);
 
   const generateReport = async () => {
     if (emails.length === 0) {
@@ -17,32 +25,38 @@ const BatchSummaryReport = ({ emails, report, setReport, collapsedCategories, se
     setLoading(true);
     setError(null);
     setReport(null);
-    setAnalyzedEmails([]);
-    setCalendarEvents([]);
+    // Only clear analyzed data if we're starting fresh analysis
+    // setAnalyzedEmails([]);
+    // setCalendarEvents([]);
     
     try {
-      // First, analyze all emails for priority and calendar information
-      const emailAnalysisPromises = emails.map(async (email) => {
-        try {
-          const analysis = await comprehensiveAnalyzeEmail(email.subject, email.body, email.from);
-          return {
-            ...email,
-            priority: analysis.priority || { priority_score: 5, urgency_level: 'Medium', reasoning: 'No priority analysis available' },
-            calendar_events: analysis.calendar_events || { has_events: false, events: [] },
-            summary: analysis.summary || 'No summary available'
-          };
-        } catch (err) {
-          console.error(`Failed to analyze email ${email.id}:`, err);
-          return {
-            ...email,
-            priority: { priority_score: 5, urgency_level: 'Medium', reasoning: 'Analysis failed' },
-            calendar_events: { has_events: false, events: [] },
-            summary: 'Analysis failed'
-          };
-        }
-      });
+      // Check if we already have analyzed emails, if not, analyze them
+      let analyzed = analyzedEmails;
       
-      const analyzed = await Promise.all(emailAnalysisPromises);
+      if (analyzedEmails.length === 0 || analyzedEmails.length !== emails.length) {
+        // First, analyze all emails for priority and calendar information
+        const emailAnalysisPromises = emails.map(async (email) => {
+          try {
+            const analysis = await comprehensiveAnalyzeEmail(email.subject, email.body, email.from);
+            return {
+              ...email,
+              priority: analysis.priority || { priority_score: 5, urgency_level: 'Medium', reasoning: 'No priority analysis available' },
+              calendar_events: analysis.calendar_events || { has_events: false, events: [] },
+              summary: analysis.summary || 'No summary available'
+            };
+          } catch (err) {
+            console.error(`Failed to analyze email ${email.id}:`, err);
+            return {
+              ...email,
+              priority: { priority_score: 5, urgency_level: 'Medium', reasoning: 'Analysis failed' },
+              calendar_events: { has_events: false, events: [] },
+              summary: 'Analysis failed'
+            };
+          }
+        });
+        
+        analyzed = await Promise.all(emailAnalysisPromises);
+      }
       
       // Sort emails by priority score (highest first)
       const sortedEmails = analyzed.sort((a, b) => {
@@ -53,22 +67,24 @@ const BatchSummaryReport = ({ emails, report, setReport, collapsedCategories, se
       
       setAnalyzedEmails(sortedEmails);
       
-      // Extract all calendar events
-      const allEvents = [];
-      sortedEmails.forEach(email => {
-        if (email.calendar_events?.has_events && email.calendar_events.events?.length > 0) {
-          email.calendar_events.events.forEach(event => {
-            allEvents.push({
-              ...event,
-              emailId: email.id,
-              emailSubject: email.subject,
-              emailFrom: email.from
+      // Extract all calendar events only if we don't have them or if emails changed
+      if (calendarEvents.length === 0 || analyzedEmails.length !== sortedEmails.length) {
+        const allEvents = [];
+        sortedEmails.forEach(email => {
+          if (email.calendar_events?.has_events && email.calendar_events.events?.length > 0) {
+            email.calendar_events.events.forEach(event => {
+              allEvents.push({
+                ...event,
+                emailId: email.id,
+                emailSubject: email.subject,
+                emailFrom: email.from
+              });
             });
-          });
-        }
-      });
-      
-      setCalendarEvents(allEvents);
+          }
+        });
+        
+        setCalendarEvents(allEvents);
+      }
       
       // Generate enhanced batch summary report with priority and calendar data
       const data = await batchSummarizeWithEmails(sortedEmails);

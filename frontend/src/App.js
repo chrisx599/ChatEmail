@@ -314,6 +314,9 @@ function App() {
   const [message, setMessage] = useState('');
   const [report, setReport] = useState(null);
   const [collapsedCategories, setCollapsedCategories] = useState(new Set());
+  // Add state for batch analysis results
+  const [analyzedEmails, setAnalyzedEmails] = useState([]);
+  const [calendarEvents, setCalendarEvents] = useState([]);
 
   return (
     <Router>
@@ -348,6 +351,10 @@ function App() {
                 setReport={setReport}
                 collapsedCategories={collapsedCategories}
                 setCollapsedCategories={setCollapsedCategories}
+                analyzedEmails={analyzedEmails}
+                setAnalyzedEmails={setAnalyzedEmails}
+                calendarEvents={calendarEvents}
+                setCalendarEvents={setCalendarEvents}
               />
             } 
           />
