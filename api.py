@@ -7,7 +7,7 @@ from dotenv import load_dotenv, set_key
 
 # Import your existing modules
 from email_client import EmailClient
-from ai_service import summarize_email, generate_batch_summary_report
+from ai_service import summarize_email, generate_batch_summary_report, analyze_email_comprehensive
 from config_manager import config_manager
 
 # --- Pydantic Models ---
@@ -48,6 +48,39 @@ class AnalyzeRequest(BaseModel):
 
 class AnalyzeResponse(BaseModel):
     summary: str
+
+class ComprehensiveAnalyzeRequest(BaseModel):
+    subject: str
+    body: str
+    from_addr: str = Field(..., alias='from')
+
+class PriorityAnalysis(BaseModel):
+    priority_score: int
+    urgency_level: str
+    reasoning: str
+    action_required: bool
+    estimated_response_time: str
+
+class CalendarEvent(BaseModel):
+    title: str
+    date: str
+    time: str
+    location: str
+    attendees: List[str]
+    description: str
+    meeting_link: Optional[str]
+    event_type: str
+
+class CalendarEvents(BaseModel):
+    has_events: bool
+    events: List[CalendarEvent]
+    action_items: List[str]
+    rsvp_required: bool
+
+class ComprehensiveAnalyzeResponse(BaseModel):
+    summary: str
+    priority_analysis: PriorityAnalysis
+    calendar_events: CalendarEvents
 
 class BatchSummarizeWithDataRequest(BaseModel):
     emails: List[Email]
@@ -202,3 +235,73 @@ def batch_summarize_emails_with_data(request: BatchSummarizeWithDataRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred during batch summarization: {e}")
+
+@app.post("/api/analyze/comprehensive", response_model=ComprehensiveAnalyzeResponse)
+def analyze_email_comprehensive_endpoint(request: ComprehensiveAnalyzeRequest):
+    """
+    Performs comprehensive email analysis including summary, priority scoring, and calendar event extraction.
+    """
+    reload_config() # Ensure AI service uses latest config
+    try:
+        # Get comprehensive analysis
+        analysis = analyze_email_comprehensive(
+            subject=request.subject, 
+            body=request.body, 
+            from_addr=request.from_addr
+        )
+        
+        # Check for errors in any component
+        if "error" in analysis.get("priority_analysis", {}):
+            raise HTTPException(status_code=500, detail=analysis["priority_analysis"]["error"])
+        if "error" in analysis.get("calendar_events", {}):
+            raise HTTPException(status_code=500, detail=analysis["calendar_events"]["error"])
+        if analysis["summary"].startswith("[ERROR]"):
+            raise HTTPException(status_code=500, detail=analysis["summary"])
+        
+        # Safely extract and validate priority analysis data
+        priority_data = analysis.get("priority_analysis", {})
+        safe_priority_analysis = {
+            "priority_score": priority_data.get("priority_score", 5),
+            "urgency_level": priority_data.get("urgency_level", "中"),
+            "reasoning": priority_data.get("reasoning", "无法分析"),
+            "action_required": priority_data.get("action_required", False),
+            "estimated_response_time": priority_data.get("estimated_response_time", "1天内")
+        }
+        
+        # Safely extract and validate calendar events data
+        calendar_data = analysis.get("calendar_events", {})
+        safe_calendar_events = {
+            "has_events": calendar_data.get("has_events", False),
+            "events": [],
+            "action_items": calendar_data.get("action_items", []),
+            "rsvp_required": calendar_data.get("rsvp_required", False)
+        }
+        
+        # Process events if they exist
+        if calendar_data.get("events"):
+            for event in calendar_data["events"]:
+                safe_event = {
+                    "title": event.get("title", "未知活动"),
+                    "date": event.get("date", "待定"),
+                    "time": event.get("time", "待定"),
+                    "location": event.get("location", "待定"),
+                    "attendees": event.get("attendees", []),
+                    "description": event.get("description", ""),
+                    "meeting_link": event.get("meeting_link"),
+                    "event_type": event.get("event_type", "其他")
+                }
+                safe_calendar_events["events"].append(safe_event)
+        
+        # Structure the response with validated data
+        return ComprehensiveAnalyzeResponse(
+            summary=analysis["summary"],
+            priority_analysis=PriorityAnalysis(**safe_priority_analysis),
+            calendar_events=CalendarEvents(**safe_calendar_events)
+        )
+    except HTTPException:
+        # Re-raise HTTPExceptions
+        raise
+    except Exception as e:
+        import traceback
+        error_detail = f"An unexpected error occurred during comprehensive analysis: {e}\nTraceback: {traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)

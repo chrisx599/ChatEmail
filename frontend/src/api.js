@@ -90,3 +90,22 @@ export const batchSummarizeWithEmails = async (emails) => {
     }
     return response.json();
 };
+
+export const comprehensiveAnalyzeEmail = async (subject, body, fromAddr) => {
+    const response = await fetch(`${API_BASE_URL}/api/analyze/comprehensive`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+            subject, 
+            body, 
+            from: fromAddr 
+        }),
+    });
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to get comprehensive analysis');
+    }
+    return response.json();
+};
