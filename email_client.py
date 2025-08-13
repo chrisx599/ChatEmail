@@ -7,33 +7,32 @@ from email.header import decode_header
 from datetime import datetime, timedelta
 import logging
 
-from config import (
-    IMAP_SERVER,
-    IMAP_PORT,
-    EMAIL_ADDRESS,
-    EMAIL_PASSWORD,
-    IMAP_MAILBOX,
-    FETCH_CRITERIA,
-    FETCH_LIMIT,
-    FETCH_DAYS,
-    MARK_AS_READ,
-    MOVE_TO_FOLDER_ON_SUCCESS,
-    LOG_LEVEL
-)
+from config_manager import config_manager
 
-# Configure logging
-logging.basicConfig(level=getattr(logging, LOG_LEVEL.upper()),
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging - will be updated dynamically
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class EmailClient:
     def __init__(self):
         self.mail = None
+        self._update_logging_level()
+    
+    def _update_logging_level(self):
+        """Update logging level from current config."""
+        log_level = config_manager.get('LOG_LEVEL', 'INFO')
+        logging.getLogger().setLevel(getattr(logging, log_level.upper()))
 
     def connect(self):
         """Connect to the IMAP server and log in."""
+        self._update_logging_level()
         try:
-            self.mail = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
-            self.mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            imap_server = config_manager.get('IMAP_SERVER')
+            imap_port = config_manager.get('IMAP_PORT', 993)
+            email_address = config_manager.get('EMAIL_ADDRESS')
+            email_password = config_manager.get('EMAIL_PASSWORD')
+            
+            self.mail = imaplib.IMAP4_SSL(imap_server, imap_port)
+            self.mail.login(email_address, email_password)
             logging.info("Successfully connected to the email server.")
             return True
         except imaplib.IMAP4.error as e:
@@ -45,10 +44,13 @@ class EmailClient:
 
     def _build_search_criteria(self):
         """Builds the IMAP search criteria based on config."""
-        criteria = [FETCH_CRITERIA]
+        fetch_criteria = config_manager.get('FETCH_CRITERIA', 'UNSEEN')
+        fetch_days = config_manager.get('FETCH_DAYS', 0)
+        
+        criteria = [fetch_criteria]
 
-        if FETCH_DAYS > 0:
-            date_n_days_ago = (datetime.now() - timedelta(days=FETCH_DAYS)).strftime("%d-%b-%Y")
+        if fetch_days > 0:
+            date_n_days_ago = (datetime.now() - timedelta(days=fetch_days)).strftime("%d-%b-%Y")
             criteria.append(f'SINCE "{date_n_days_ago}" ')
         
         # IMAP search expects bytes
@@ -61,9 +63,10 @@ class EmailClient:
             return []
 
         try:
-            status, _ = self.mail.select(IMAP_MAILBOX)
+            imap_mailbox = config_manager.get('IMAP_MAILBOX', 'INBOX')
+            status, _ = self.mail.select(imap_mailbox)
             if status != 'OK':
-                logging.error(f"Failed to select mailbox '{IMAP_MAILBOX}': {status}")
+                logging.error(f"Failed to select mailbox '{imap_mailbox}': {status}")
                 return []
 
             search_criteria = self._build_search_criteria()
@@ -80,7 +83,8 @@ class EmailClient:
                 return []
             
             # Apply FETCH_LIMIT, fetching newest first
-            email_ids_to_fetch = email_ids[-FETCH_LIMIT:] if FETCH_LIMIT > 0 else email_ids
+            fetch_limit = config_manager.get('FETCH_LIMIT', 10)
+            email_ids_to_fetch = email_ids[-fetch_limit:] if fetch_limit > 0 else email_ids
             logging.info(f"Found {len(email_ids)} emails, fetching {len(email_ids_to_fetch)}.")
 
             fetched_emails = []

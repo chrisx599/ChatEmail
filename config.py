@@ -44,10 +44,13 @@ MOVE_TO_FOLDER_ON_SUCCESS = get_config("MOVE_TO_FOLDER_ON_SUCCESS")
 AI_PROVIDER = get_config("AI_PROVIDER", "openai")
 OPENAI_API_KEY = get_config("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = get_config("ANTHROPIC_API_KEY")
+OPENROUTER_API_KEY = get_config("OPENROUTER_API_KEY")
 OPENAI_BASE_URL = get_config("OPENAI_BASE_URL", "https://api.openai.com/v1")
+OPENROUTER_BASE_URL = get_config("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
 # AI Behavior Settings
 OPENAI_MODEL = get_config("OPENAI_MODEL", "gpt-4o-mini")
+OPENROUTER_MODEL = get_config("OPENROUTER_MODEL", "openai/gpt-4o-mini")
 AI_OUTPUT_LANGUAGE = get_config("AI_OUTPUT_LANGUAGE", "Chinese")
 AI_TEMPERATURE = get_config("AI_TEMPERATURE", 0.5, float)
 AI_MAX_TOKENS = get_config("AI_MAX_TOKENS", 250, int)
@@ -65,6 +68,9 @@ def validate_config():
     
     if AI_PROVIDER == 'anthropic' and not ANTHROPIC_API_KEY:
         raise ValueError("AI_PROVIDER is set to 'anthropic', but ANTHROPIC_API_KEY is missing.")
+    
+    if AI_PROVIDER == 'openrouter' and not OPENROUTER_API_KEY:
+        raise ValueError("AI_PROVIDER is set to 'openrouter', but OPENROUTER_API_KEY is missing.")
 
 # Run validation when the module is imported
 validate_config()

@@ -1,14 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel, Field, RootModel
+from typing import Optional, List, Dict, Any
 import os
 from dotenv import load_dotenv, set_key
 
 # Import your existing modules
 from email_client import EmailClient
-from ai_service import summarize_email
-import config as app_config # Import your config loader
+from ai_service import summarize_email, generate_batch_summary_report
+from config_manager import config_manager
 
 # --- Pydantic Models ---
 
@@ -26,8 +26,11 @@ class AppConfig(BaseModel):
     AI_PROVIDER: str = Field("openai", title="AI Provider")
     OPENAI_API_KEY: Optional[str] = Field(None, title="OpenAI API Key")
     ANTHROPIC_API_KEY: Optional[str] = Field(None, title="Anthropic API Key")
+    OPENROUTER_API_KEY: Optional[str] = Field(None, title="OpenRouter API Key")
     OPENAI_BASE_URL: str = Field("https://api.openai.com/v1", title="OpenAI Base URL")
+    OPENROUTER_BASE_URL: Optional[str] = Field("https://openrouter.ai/api/v1", title="OpenRouter Base URL")
     OPENAI_MODEL: str = Field("gpt-4o-mini", title="OpenAI Model")
+    OPENROUTER_MODEL: Optional[str] = Field("openai/gpt-4o-mini", title="OpenRouter Model")
     AI_OUTPUT_LANGUAGE: str = Field("Chinese", title="AI Output Language")
     AI_TEMPERATURE: float = Field(0.5, title="AI Temperature")
     AI_MAX_TOKENS: int = Field(250, title="AI Max Tokens")
@@ -45,6 +48,16 @@ class AnalyzeRequest(BaseModel):
 
 class AnalyzeResponse(BaseModel):
     summary: str
+
+class BatchSummarizeWithDataRequest(BaseModel):
+    emails: List[Email]
+
+# Pydantic model for the batch summary response
+# Using a generic Dict[str, Any] for flexibility, as the structure is defined by the AI
+# Alternatively, a more specific model could be defined if the structure is fixed
+# In Pydantic v2, we use RootModel for this purpose
+class BatchSummarizeResponse(RootModel[Dict[str, Any]]):
+    pass
 
 # --- FastAPI App Initialization ---
 app = FastAPI()
@@ -65,13 +78,8 @@ DOTENV_PATH = os.path.join(os.path.dirname(__file__), '.env')
 def reload_config():
     """Reloads the configuration from the .env file."""
     load_dotenv(dotenv_path=DOTENV_PATH, override=True)
-    import importlib
-    importlib.reload(app_config)
-    # Also reload the ai_service to re-initialize clients with new keys
-    from ai_service import __name__ as ai_service_name
-    import sys
-    if ai_service_name in sys.modules:
-        importlib.reload(sys.modules[ai_service_name])
+    # Use ConfigManager's reload method for hot-swappable configuration
+    config_manager.reload_config()
 
 # --- API Endpoints ---
 @app.get("/")
@@ -92,11 +100,21 @@ def save_configuration(config: AppConfig):
 @app.get("/api/config", response_model=AppConfig)
 def get_configuration():
     try:
-        load_dotenv(dotenv_path=DOTENV_PATH)
-        env_vars = {key: os.getenv(key) for key in AppConfig.model_fields.keys()}
+        # Use ConfigManager to get current configuration
+        config = config_manager.get_all_config()
+        env_vars = {key: getattr(config, key, None) for key in AppConfig.model_fields.keys()}
+        
+        # Handle required fields that might be None
+        if env_vars.get('EMAIL_ADDRESS') is None:
+            env_vars['EMAIL_ADDRESS'] = ''
+        if env_vars.get('EMAIL_PASSWORD') is None:
+            env_vars['EMAIL_PASSWORD'] = ''
+            
         return AppConfig(**env_vars)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        error_detail = f"Configuration error: {str(e)}\nTraceback: {traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 @app.get("/api/emails", response_model=List[Email])
 def get_emails():
@@ -125,3 +143,62 @@ def analyze_email_summary(request: AnalyzeRequest):
         return AnalyzeResponse(summary=summary)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred during analysis: {e}")
+
+@app.post("/api/batch-summarize", response_model=BatchSummarizeResponse)
+def batch_summarize_emails():
+    """
+    Fetches emails and generates a batch summary report.
+    """
+    reload_config() # Ensure latest config is used
+    client = EmailClient()
+    if not client.connect():
+        raise HTTPException(status_code=500, detail="Could not connect to email server for batch summary.")
+    
+    try:
+        emails = client.fetch_emails()
+        if not emails:
+             # Return an empty but valid structure if no emails
+            return BatchSummarizeResponse({"categories": []})
+        
+        report = generate_batch_summary_report(emails)
+        
+        # Check if the AI service returned an error
+        if "error" in report:
+            raise HTTPException(status_code=500, detail=report["error"])
+            
+        return BatchSummarizeResponse(report)
+    except HTTPException:
+        # Re-raise HTTPExceptions (e.g., from connect failure)
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during batch summarization: {e}")
+    finally:
+        client.close()
+
+@app.post("/api/batch-summarize-with-data", response_model=BatchSummarizeResponse)
+def batch_summarize_emails_with_data(request: BatchSummarizeWithDataRequest):
+    """
+    Generates a batch summary report from provided email data.
+    """
+    reload_config() # Ensure latest config is used
+    
+    try:
+        if not request.emails:
+             # Return an empty but valid structure if no emails
+            return BatchSummarizeResponse({"categories": []})
+        
+        # Convert Pydantic models to dictionaries, ensuring the 'from' field is correctly named
+        # We need to use by_alias=True to use the alias 'from' instead of 'from_'
+        email_dicts = [email.model_dump(by_alias=True) for email in request.emails]
+        report = generate_batch_summary_report(email_dicts)
+        
+        # Check if the AI service returned an error
+        if "error" in report:
+            raise HTTPException(status_code=500, detail=report["error"])
+            
+        return BatchSummarizeResponse(report)
+    except HTTPException:
+        # Re-raise HTTPExceptions
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during batch summarization: {e}")
