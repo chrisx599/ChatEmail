@@ -109,36 +109,48 @@ class EmailClient:
             subject = subject.decode(encoding if encoding else 'utf-8', errors='ignore')
 
         from_header = msg.get('From')
-        body = ""
+        body_plain = ""
+        body_html = ""
 
         if msg.is_multipart():
             for part in msg.walk():
                 content_type = part.get_content_type()
                 content_disposition = str(part.get('Content-Disposition'))
 
-                if content_type == 'text/plain' and 'attachment' not in content_disposition:
-                    charset = part.get_content_charset()
-                    try:
-                        payload = part.get_payload(decode=True)
-                        body = payload.decode(charset if charset else 'utf-8', errors='ignore')
-                    except Exception as e:
-                        logging.warning(f"Could not decode email body for ID {email_id}: {e}")
-                        body = "[Decoding Error]"
-                    break # Take the first plain text part
+                if 'attachment' in content_disposition:
+                    continue
+
+                charset = part.get_content_charset()
+                payload = part.get_payload(decode=True)
+                if not payload:
+                    continue
+                
+                try:
+                    decoded_payload = payload.decode(charset if charset else 'utf-8', errors='ignore')
+                except (LookupError, UnicodeDecodeError):
+                    decoded_payload = payload.decode('latin-1', errors='ignore') # Fallback encoding
+
+                if content_type == 'text/plain' and not body_plain:
+                    body_plain = decoded_payload
+                elif content_type == 'text/html' and not body_html:
+                    body_html = decoded_payload
         else:
+            # Not a multipart message, just get the payload
             charset = msg.get_content_charset()
+            payload = msg.get_payload(decode=True)
             try:
-                payload = msg.get_payload(decode=True)
-                body = payload.decode(charset if charset else 'utf-8', errors='ignore')
-            except Exception as e:
-                logging.warning(f"Could not decode email body for ID {email_id}: {e}")
-                body = "[Decoding Error]"
+                body_plain = payload.decode(charset if charset else 'utf-8', errors='ignore')
+            except (LookupError, UnicodeDecodeError):
+                body_plain = payload.decode('latin-1', errors='ignore')
+
+        # Prioritize plain text, but fall back to HTML
+        body = body_plain.strip() if body_plain else body_html.strip()
         
         return {
             'id': email_id,
             'from': from_header,
             'subject': subject,
-            'body': body.strip()
+            'body': body
         }
 
     def mark_email_as_read(self, email_id):
