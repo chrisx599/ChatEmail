@@ -82,20 +82,111 @@ const Config = ({ isLoading, setIsLoading, error, setError, message, setMessage 
                     <option value="openrouter">OpenRouter</option>
                   </select>
                 </label>
-                <label>OpenAI API Key: <input type="password" name="OPENAI_API_KEY" value={config.OPENAI_API_KEY || ''} onChange={handleChange} /></label>
-                <label>Anthropic API Key: <input type="password" name="ANTHROPIC_API_KEY" value={config.ANTHROPIC_API_KEY || ''} onChange={handleChange} /></label>
-                <label>OpenRouter API Key: <input type="password" name="OPENROUTER_API_KEY" value={config.OPENROUTER_API_KEY || ''} onChange={handleChange} /></label>
-                <label>OpenAI Base URL: <input type="text" name="OPENAI_BASE_URL" value={config.OPENAI_BASE_URL || ''} onChange={handleChange} /></label>
-                <label>OpenRouter Base URL: <input type="text" name="OPENROUTER_BASE_URL" value={config.OPENROUTER_BASE_URL || ''} onChange={handleChange} /></label>
+                
+                {/* 统一的API Key字段 */}
+                <label>API Key: 
+                  <input 
+                    type="password" 
+                    name={`${config.AI_PROVIDER?.toUpperCase() || 'OPENAI'}_API_KEY`}
+                    value={config[`${config.AI_PROVIDER?.toUpperCase() || 'OPENAI'}_API_KEY`] || ''} 
+                    onChange={handleChange}
+                    placeholder={`Enter your ${config.AI_PROVIDER || 'OpenAI'} API Key`}
+                  />
+                </label>
+                
+                {/* 根据provider动态显示Base URL */}
+                {(config.AI_PROVIDER === 'openai' || config.AI_PROVIDER === 'openrouter') && (
+                  <label>{config.AI_PROVIDER === 'openai' ? 'OpenAI' : 'OpenRouter'} Base URL: 
+                    <input 
+                      type="text" 
+                      name={`${config.AI_PROVIDER?.toUpperCase()}_BASE_URL`}
+                      value={config[`${config.AI_PROVIDER?.toUpperCase()}_BASE_URL`] || ''} 
+                      onChange={handleChange}
+                      placeholder={config.AI_PROVIDER === 'openai' ? 'https://api.openai.com/v1' : 'https://openrouter.ai/api/v1'}
+                    />
+                  </label>
+                )}
+                
+                {/* Provider说明 */}
+                <div className="provider-info">
+                  {config.AI_PROVIDER === 'openai' && (
+                    <p className="info-text">💡 OpenAI: 使用官方OpenAI API，需要OpenAI账户和API密钥</p>
+                  )}
+                  {config.AI_PROVIDER === 'anthropic' && (
+                    <p className="info-text">💡 Anthropic: 使用Claude AI，需要Anthropic账户和API密钥</p>
+                  )}
+                  {config.AI_PROVIDER === 'openrouter' && (
+                    <p className="info-text">💡 OpenRouter: 统一的AI API网关，支持多种模型，需要OpenRouter账户和API密钥</p>
+                  )}
+                </div>
               </div>
 
               <div className="form-section">
                 <h3>AI Behavior Settings</h3>
-                <label>OpenAI Model: <input type="text" name="OPENAI_MODEL" value={config.OPENAI_MODEL || ''} onChange={handleChange} /></label>
-                <label>OpenRouter Model: <input type="text" name="OPENROUTER_MODEL" value={config.OPENROUTER_MODEL || ''} onChange={handleChange} /></label>
-                <label>AI Output Language: <input type="text" name="AI_OUTPUT_LANGUAGE" value={config.AI_OUTPUT_LANGUAGE || ''} onChange={handleChange} /></label>
-                <label>AI Temperature: <input type="number" step="0.1" name="AI_TEMPERATURE" value={config.AI_TEMPERATURE || 0} onChange={handleChange} /></label>
-                <label>AI Max Tokens: <input type="number" name="AI_MAX_TOKENS" value={config.AI_MAX_TOKENS || 0} onChange={handleChange} /></label>
+                
+                {/* 根据provider动态显示模型选择 */}
+                <label>AI Model: 
+                  <input 
+                    type="text" 
+                    name={`${config.AI_PROVIDER?.toUpperCase() || 'OPENAI'}_MODEL`}
+                    value={config[`${config.AI_PROVIDER?.toUpperCase() || 'OPENAI'}_MODEL`] || ''} 
+                    onChange={handleChange}
+                    placeholder={
+                      config.AI_PROVIDER === 'openai' ? 'gpt-4o-mini' :
+                      config.AI_PROVIDER === 'anthropic' ? 'claude-3-haiku-20240307' :
+                      config.AI_PROVIDER === 'openrouter' ? 'openai/gpt-4o-mini' :
+                      'gpt-4o-mini'
+                    }
+                  />
+                </label>
+                
+                {/* 模型说明 */}
+                <div className="model-info">
+                  {config.AI_PROVIDER === 'openai' && (
+                    <p className="info-text">🤖 推荐模型: gpt-4o-mini (性价比高), gpt-4o (功能强大)</p>
+                  )}
+                  {config.AI_PROVIDER === 'anthropic' && (
+                    <p className="info-text">🤖 推荐模型: claude-3-haiku-20240307 (快速), claude-3-sonnet-20240229 (平衡)</p>
+                  )}
+                  {config.AI_PROVIDER === 'openrouter' && (
+                    <p className="info-text">🤖 支持多种模型，如: openai/gpt-4o-mini, anthropic/claude-3-haiku</p>
+                  )}
+                </div>
+                
+                <label>AI Output Language: 
+                  <select name="AI_OUTPUT_LANGUAGE" value={config.AI_OUTPUT_LANGUAGE || 'Chinese'} onChange={handleChange}>
+                    <option value="Chinese">中文</option>
+                    <option value="English">English</option>
+                    <option value="Japanese">日本語</option>
+                    <option value="Korean">한국어</option>
+                  </select>
+                </label>
+                
+                <label>AI Temperature (创造性): 
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="2" 
+                    step="0.1" 
+                    name="AI_TEMPERATURE" 
+                    value={config.AI_TEMPERATURE || 0.5} 
+                    onChange={handleChange}
+                  />
+                  <span className="range-value">{config.AI_TEMPERATURE || 0.5}</span>
+                </label>
+                
+                <label>AI Max Tokens (最大输出长度): 
+                  <input 
+                    type="range" 
+                    min="50" 
+                    max="1000" 
+                    step="50" 
+                    name="AI_MAX_TOKENS" 
+                    value={config.AI_MAX_TOKENS || 250} 
+                    onChange={handleChange}
+                  />
+                  <span className="range-value">{config.AI_MAX_TOKENS || 250}</span>
+                </label>
               </div>
 
               <div className="form-section">

@@ -104,6 +104,50 @@ select {
   box-sizing: border-box;
 }
 
+/* Range input styles */
+input[type="range"] {
+  width: calc(100% - 60px);
+  margin-top: 5px;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+.range-value {
+  display: inline-block;
+  width: 50px;
+  text-align: center;
+  font-weight: bold;
+  color: #007bff;
+  background-color: #f8f9fa;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  font-size: 14px;
+}
+
+/* Provider and model info styles */
+.provider-info,
+.model-info {
+  margin-top: 10px;
+  margin-bottom: 15px;
+}
+
+.info-text {
+  background-color: #e7f3ff;
+  border-left: 4px solid #007bff;
+  padding: 10px 15px;
+  margin: 8px 0;
+  border-radius: 0 4px 4px 0;
+  font-size: 14px;
+  color: #0056b3;
+  line-height: 1.4;
+}
+
+.info-text:before {
+  content: '';
+  margin-right: 8px;
+}
+
 .action-btn {
   color: white;
   padding: 12px 20px;
