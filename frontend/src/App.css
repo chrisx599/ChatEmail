@@ -944,3 +944,124 @@ select {
   line-height: 1.5;
   color: #495057;
 }
+
+/* Mail Layout Styles */
+.mail-layout {
+  display: flex;
+  height: calc(100vh - 200px);
+  gap: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mail-sidebar {
+  width: 350px;
+  min-width: 300px;
+  background: white;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+}
+
+.mail-toolbar {
+  padding: 15px;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.mail-toolbar .fetch-btn {
+  width: 100%;
+  margin: 0;
+}
+
+.email-list-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.mail-sidebar .email-list {
+  margin: 0;
+  padding: 0;
+}
+
+.mail-sidebar .email-item {
+  border: none;
+  border-bottom: 1px solid #e9ecef;
+  border-radius: 0;
+  margin: 0;
+  padding: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.mail-sidebar .email-item:hover {
+  background-color: #f8f9fa;
+  box-shadow: none;
+  border-left: none;
+}
+
+.mail-sidebar .email-item.selected {
+  background-color: #e3f2fd;
+  border-left: 3px solid #2196f3;
+}
+
+.mail-sidebar .email-item.selected:hover {
+  background-color: #e3f2fd;
+}
+
+.mail-content {
+  flex: 1;
+  background: white;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.empty-detail-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6c757d;
+}
+
+.empty-detail-content {
+  text-align: center;
+}
+
+.empty-detail-content h3 {
+  margin-bottom: 10px;
+  color: #495057;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+}
+
+.email-calendar-indicator {
+  font-size: 0.85rem;
+  color: #28a745;
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+/* Responsive design for mail layout */
+@media (max-width: 768px) {
+  .mail-layout {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .mail-sidebar {
+    width: 100%;
+    min-width: auto;
+    max-height: 300px;
+  }
+  
+  .mail-content {
+    min-height: 400px;
+  }
+}
