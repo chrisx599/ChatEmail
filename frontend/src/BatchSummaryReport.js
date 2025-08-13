@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { batchSummarizeWithEmails } from './api';
 import './App.css'; // Reuse existing styles
 
-const BatchSummaryReport = ({ emails }) => {
-  const [report, setReport] = useState(null);
+const BatchSummaryReport = ({ emails, report, setReport, collapsedCategories, setCollapsedCategories }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [collapsedCategories, setCollapsedCategories] = useState(new Set());
 
   const generateReport = async () => {
     if (emails.length === 0) {

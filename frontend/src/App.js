@@ -237,6 +237,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState('');
+  const [report, setReport] = useState(null);
+  const [collapsedCategories, setCollapsedCategories] = useState(new Set());
 
   return (
     <Router>
@@ -267,6 +269,10 @@ function App() {
                 error={error}
                 message={message}
                 setMessage={setMessage}
+                report={report}
+                setReport={setReport}
+                collapsedCategories={collapsedCategories}
+                setCollapsedCategories={setCollapsedCategories}
               />
             } 
           />
