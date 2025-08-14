@@ -95,7 +95,7 @@ const Mail = ({
             
             <div className="email-list-container">
               <ul className="email-list">
-                {emails.map(email => (
+                {emails.sort((a, b) => parseInt(b.id) - parseInt(a.id)).map(email => (
                   <li 
                     key={email.id} 
                     className={`email-item ${selectedEmail?.id === email.id ? 'selected' : ''}`}
@@ -140,6 +140,10 @@ const Mail = ({
                 <div className="email-detail-header">
                   <h2>{selectedEmail.subject}</h2>
                   <p><strong>From:</strong> {selectedEmail.from}</p>
+                  {selectedEmail.to && <p><strong>To:</strong> {selectedEmail.to}</p>}
+                  {selectedEmail.cc && <p><strong>CC:</strong> {selectedEmail.cc}</p>}
+                  {selectedEmail.date && <p><strong>Date:</strong> {selectedEmail.date}</p>}
+                  {selectedEmail.reply_to && <p><strong>Reply-To:</strong> {selectedEmail.reply_to}</p>}
                 </div>
                 
                 <div className="ai-actions">

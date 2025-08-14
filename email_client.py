@@ -113,6 +113,11 @@ class EmailClient:
             subject = subject.decode(encoding if encoding else 'utf-8', errors='ignore')
 
         from_header = msg.get('From')
+        to_header = msg.get('To')
+        cc_header = msg.get('Cc')
+        date_header = msg.get('Date')
+        reply_to_header = msg.get('Reply-To')
+        
         body_plain = ""
         body_html = ""
 
@@ -153,6 +158,10 @@ class EmailClient:
         return {
             'id': email_id,
             'from': from_header,
+            'to': to_header,
+            'cc': cc_header,
+            'date': date_header,
+            'reply_to': reply_to_header,
             'subject': subject,
             'body': body
         }

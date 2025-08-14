@@ -39,6 +39,10 @@ class AppConfig(BaseModel):
 class Email(BaseModel):
     id: str
     from_: str = Field(..., alias='from')
+    to: Optional[str] = None
+    cc: Optional[str] = None
+    date: Optional[str] = None
+    reply_to: Optional[str] = Field(None, alias='reply_to')
     subject: str
     body: str
 
