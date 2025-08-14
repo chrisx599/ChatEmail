@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react';
 import { getEmails, summarizeEmail, comprehensiveAnalyzeEmail } from '../api';
 
 const Mail = ({ 
@@ -15,6 +15,18 @@ const Mail = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState('');
   const [emailAnalysisCache, setEmailAnalysisCache] = useState({});
+  const mailContentRef = useRef(null);
+
+  // 使用 useLayoutEffect 来稳定容器宽度，防止 iframe 内容变化影响布局
+  useLayoutEffect(() => {
+    if (mailContentRef.current) {
+      const { width } = mailContentRef.current.getBoundingClientRect();
+      // 设置固定宽度，防止内容变化时布局抖动
+      mailContentRef.current.style.width = `${width}px`;
+      mailContentRef.current.style.minWidth = `${width}px`;
+      mailContentRef.current.style.maxWidth = `${width}px`;
+    }
+  }, [selectedEmail]); // 当选择的邮件变化时重新测量
 
   const handleFetchEmails = () => {
     setIsLoading(true);
@@ -134,7 +146,7 @@ const Mail = ({
           </div>
           
           {/* Right Panel - Email Detail */}
-          <div className="mail-content">
+          <div className="mail-content" ref={mailContentRef}>
             {selectedEmail ? (
               <div className="email-detail-view">
                 <div className="email-detail-header">
@@ -203,7 +215,79 @@ const Mail = ({
                   )}
                 </div>
 
-                <div className="email-body" dangerouslySetInnerHTML={{ __html: selectedEmail.body }} />
+                <div className="email-body">
+                  <iframe
+                    title="Email Content"
+                    srcDoc={`
+                      <!DOCTYPE html>
+                      <html>
+                        <head>
+                          <meta charset="utf-8">
+                          <meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none';">
+                          <style>
+                            body {
+                              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                              line-height: 1.6;
+                              margin: 0;
+                              padding: 16px;
+                              background: white;
+                              color: #333;
+                            }
+                            * {
+                              max-width: 100% !important;
+                            }
+                            img {
+                              max-width: 100% !important;
+                              height: auto !important;
+                            }
+                            table {
+                              width: 100% !important;
+                              border-collapse: collapse;
+                            }
+                          </style>
+                        </head>
+                        <body>
+                          ${selectedEmail.body}
+                        </body>
+                      </html>
+                    `}
+                    sandbox="allow-same-origin allow-popups"
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      minHeight: '400px',
+                      border: 'none',
+                      borderRadius: '8px',
+                      backgroundColor: 'white',
+                      boxSizing: 'border-box',
+                      display: 'block'
+                    }}
+                    onLoad={(e) => {
+                      // Auto-resize iframe based on content with layout stability
+                      const iframe = e.target;
+                      // 使用 requestAnimationFrame 延迟高度调整，避免立即触发布局重排
+                      requestAnimationFrame(() => {
+                        try {
+                          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                          const height = Math.max(
+                            iframeDoc.body.scrollHeight,
+                            iframeDoc.body.offsetHeight,
+                            iframeDoc.documentElement.clientHeight,
+                            iframeDoc.documentElement.scrollHeight,
+                            iframeDoc.documentElement.offsetHeight
+                          );
+                          // 设置高度时不影响父容器宽度
+                          iframe.style.height = Math.max(height + 20, 400) + 'px';
+                          // 确保 iframe 不会影响父容器的宽度计算
+                          iframe.style.contain = 'layout style';
+                        } catch (err) {
+                          // Fallback if cross-origin restrictions apply
+                          iframe.style.height = '600px';
+                        }
+                      });
+                    }}
+                  />
+                </div>
               </div>
             ) : (
               <div className="empty-detail-state">

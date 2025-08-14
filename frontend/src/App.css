@@ -859,6 +859,12 @@ input[type="range"] {
     margin-top: 20px;
     padding-top: 20px;
     border-top: 1px solid #eee;
+    width: 100%;
+    max-width: 100%; /* 防止内容超出容器宽度 */
+    overflow: hidden; /* 防止内容溢出影响布局 */
+    box-sizing: border-box;
+    contain: layout style;
+    position: relative;
 }
 
 .email-body pre {
@@ -1057,9 +1063,15 @@ input[type="range"] {
 
 .mail-content {
   flex: 1;
+  min-width: 0; /* 防止 flex item 收缩过小 */
+  width: calc(100% - 350px); /* 固定宽度，减去侧边栏宽度 */
   background: white;
   overflow-y: auto;
   padding: 20px;
+  box-sizing: border-box; /* 确保 padding 包含在宽度计算中 */
+  contain: layout style;
+  will-change: auto;
+  transform: translateZ(0);
 }
 
 .empty-detail-state {
