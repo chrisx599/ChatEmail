@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react';
 import { getEmails, summarizeEmail, comprehensiveAnalyzeEmail } from '../api';
+import { emailCache, initializeCache } from '../services/cacheService';
 
 const Mail = ({ 
   emails, 
@@ -17,6 +18,28 @@ const Mail = ({
   const [emailAnalysisCache, setEmailAnalysisCache] = useState({});
   const mailContentRef = useRef(null);
 
+  // 初始化缓存并加载缓存的邮件
+  useEffect(() => {
+    const initializeAndLoadCache = async () => {
+      try {
+        await initializeCache();
+        
+        // 如果没有邮件数据，尝试从缓存加载
+        if (emails.length === 0) {
+          const cachedEmails = await emailCache.getEmails();
+          if (cachedEmails.length > 0) {
+            setEmails(cachedEmails);
+            setMessage('Emails loaded from cache.');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize cache or load cached emails:', error);
+      }
+    };
+    
+    initializeAndLoadCache();
+  }, []); // 只在组件挂载时执行一次
+
   // 使用 useLayoutEffect 来稳定容器宽度，防止 iframe 内容变化影响布局
   useLayoutEffect(() => {
     if (mailContentRef.current) {
@@ -28,17 +51,23 @@ const Mail = ({
     }
   }, [selectedEmail]); // 当选择的邮件变化时重新测量
 
-  const handleFetchEmails = () => {
+  const handleFetchEmails = async () => {
     setIsLoading(true);
     setError(null);
     setAnalysisResult('');
-    getEmails()
-      .then(data => {
-        setEmails(data);
-        setMessage('Emails fetched successfully.');
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setIsLoading(false));
+    
+    try {
+      const data = await getEmails();
+      setEmails(data);
+      setMessage('Emails fetched successfully.');
+      
+      // 缓存获取到的邮件数据
+      await emailCache.saveEmails(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSelectEmail = (email) => {

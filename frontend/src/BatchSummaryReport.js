@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { batchSummarizeWithEmails, comprehensiveAnalyzeEmail } from './api';
 import { EXPORT_FORMATS, exportReport } from './exportUtils';
+import { batchSummaryCache, analyzedEmailsCache, calendarEventsCache, initializeCache } from './services/cacheService';
 import './App.css'; // Reuse existing styles
 
 const BatchSummaryReport = ({ 
@@ -18,6 +19,43 @@ const BatchSummaryReport = ({
   const [error, setError] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+
+  // 初始化缓存并加载缓存的数据
+  useEffect(() => {
+    const initializeAndLoadCache = async () => {
+      try {
+        await initializeCache();
+        
+        // 加载缓存的批量摘要报告
+        if (!report) {
+          const cachedReport = await batchSummaryCache.getBatchSummary();
+          if (cachedReport) {
+            setReport(cachedReport);
+          }
+        }
+        
+        // 加载缓存的分析过的邮件
+        if (analyzedEmails.length === 0) {
+          const cachedAnalyzedEmails = await analyzedEmailsCache.getAnalyzedEmails();
+          if (cachedAnalyzedEmails.length > 0) {
+            setAnalyzedEmails(cachedAnalyzedEmails);
+          }
+        }
+        
+        // 加载缓存的日历事件
+        if (calendarEvents.length === 0) {
+          const cachedCalendarEvents = await calendarEventsCache.getCalendarEvents();
+          if (cachedCalendarEvents.length > 0) {
+            setCalendarEvents(cachedCalendarEvents);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize cache or load cached data:', error);
+      }
+    };
+    
+    initializeAndLoadCache();
+  }, []); // 只在组件挂载时执行一次
 
   const generateReport = async () => {
     if (emails.length === 0) {
@@ -70,6 +108,9 @@ const BatchSummaryReport = ({
       
       setAnalyzedEmails(sortedEmails);
       
+      // 缓存分析过的邮件
+      await analyzedEmailsCache.saveAnalyzedEmails(sortedEmails);
+      
       // Extract all calendar events only if we don't have them or if emails changed
       if (calendarEvents.length === 0 || analyzedEmails.length !== sortedEmails.length) {
         const allEvents = [];
@@ -87,6 +128,9 @@ const BatchSummaryReport = ({
         });
         
         setCalendarEvents(allEvents);
+        
+        // 缓存日历事件
+        await calendarEventsCache.saveCalendarEvents(allEvents);
       }
       
       // Generate enhanced batch summary report with priority and calendar data
@@ -130,6 +174,9 @@ const BatchSummaryReport = ({
       }
       
       setReport(data);
+      
+      // 缓存批量摘要报告
+      await batchSummaryCache.saveBatchSummary(data);
     } catch (err) {
       setError(err.message);
     } finally {
