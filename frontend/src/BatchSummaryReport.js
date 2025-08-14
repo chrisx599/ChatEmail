@@ -111,27 +111,26 @@ const BatchSummaryReport = ({
       // 缓存分析过的邮件
       await analyzedEmailsCache.saveAnalyzedEmails(sortedEmails);
       
-      // Extract all calendar events only if we don't have them or if emails changed
-      if (calendarEvents.length === 0 || analyzedEmails.length !== sortedEmails.length) {
-        const allEvents = [];
-        sortedEmails.forEach(email => {
-          if (email.calendar_events?.has_events && email.calendar_events.events?.length > 0) {
-            email.calendar_events.events.forEach(event => {
-              allEvents.push({
-                ...event,
-                emailId: email.id,
-                emailSubject: email.subject,
-                emailFrom: email.from
-              });
+      // Extract all calendar events from analyzed emails
+      const allEvents = [];
+      sortedEmails.forEach(email => {
+        if (email.calendar_events?.has_events && email.calendar_events.events?.length > 0) {
+          email.calendar_events.events.forEach(event => {
+            allEvents.push({
+              ...event,
+              emailId: email.id,
+              emailSubject: email.subject,
+              emailFrom: email.from
             });
-          }
-        });
-        
-        setCalendarEvents(allEvents);
-        
-        // 缓存日历事件
-        await calendarEventsCache.saveCalendarEvents(allEvents);
-      }
+          });
+        }
+      });
+      
+      setCalendarEvents(allEvents);
+      
+      // 总是缓存提取到的日历事件
+      await calendarEventsCache.saveCalendarEvents(allEvents);
+      console.log(`Extracted and cached ${allEvents.length} calendar events`);
       
       // Generate enhanced batch summary report with priority and calendar data
       const data = await batchSummarizeWithEmails(sortedEmails);
@@ -167,6 +166,10 @@ const BatchSummaryReport = ({
                 combined.push(backendEvent);
               }
             });
+            
+            // 缓存合并后的日历事件
+            calendarEventsCache.saveCalendarEvents(combined);
+            console.log(`Merged and cached ${combined.length} calendar events (including backend events)`);
             
             return combined;
           });
